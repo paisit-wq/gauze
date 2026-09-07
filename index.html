@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AR สื่อการสอนการทำแผลฉุกเฉิน (Paramedic WebAR)</title>
+  
+  <!-- A-Frame & MindAR Libraries -->
+  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: 'Sarabun', 'Helvetica Neue', sans-serif;
+    }
+    
+    /* Modern Glassmorphism UI Overlay */
+    #ui-container {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 90%;
+      max-width: 420px;
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 16px;
+      padding: 16px;
+      color: #ffffff;
+      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      z-index: 999;
+      box-sizing: border-box;
+    }
+
+    .step-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .step-badge {
+      background: #0284c7;
+      color: #fff;
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-weight: bold;
+    }
+
+    .audio-btn {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      border-radius: 50%;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+
+    .audio-btn:active {
+      transform: scale(0.95);
+    }
+
+    .step-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin: 4px 0;
+      color: #38bdf8;
+    }
+
+    .step-desc {
+      font-size: 13px;
+      color: #cbd5e1;
+      line-height: 1.4;
+      margin-bottom: 14px;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 8px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-prev {
+      background: #334155;
+      color: #e2e8f0;
+    }
+
+    .btn-next {
+      background: #0284c7;
+      color: #ffffff;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- WebAR Camera Scene -->
+  <a-scene 
+    mindar-image="imageTargetSrc: https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/examples/image-tracking/assets/card-example/card.mind;" 
+    color-space="sRGB" 
+    renderer="colorManagement: true, physicallyCorrectLights" 
+    vr-mode-ui="enabled: false" 
+    device-orientation-permission-ui="enabled: false">
+    
+    <a-assets>
+      <a-asset-item id="woundModel" src="https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/Duck/glTF-Binary/Duck.glb"></a-asset-item>
+    </a-assets>
+
+    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+
+    <!-- Marker Anchor -->
+    <a-entity mindar-image-target="targetIndex: 0">
+      <a-gltf-model 
+        id="arWoundObject"
+        src="#woundModel" 
+        position="0 0 0" 
+        scale="0.2 0.2 0.2" 
+        rotation="0 0 0"
+        animation="property: rotation; to: 0 360 0; dur: 10000; easing: linear; loop: true">
+      </a-gltf-model>
+    </a-entity>
+  </a-scene>
+
+  <!-- Control UI Overlay -->
+  <div id="ui-container">
+    <div class="step-header">
+      <span class="step-badge" id="step-number">ขั้นตอนที่ 1 / 4</span>
+      <button class="audio-btn" id="toggle-audio-btn" onclick="toggleAudio()" title="เปิด/ปิดเสียงบรรยาย">🔊</button>
+    </div>
+    <div class="step-title" id="step-title">1. ล้างมือและสวมถุงมือยางปลอดเชื้อ</div>
+    <div class="step-desc" id="step-desc">
+      ทำความสะอาดมือด้วยแอลกอฮอล์เจล และสวมถุงมือแบบ สเตอไรด์ เพื่อป้องกันการติดเชื้อเข้าสู่บาดแผล
+    </div>
+    <div class="btn-group">
+      <button class="btn btn-prev" onclick="prevStep()">ย้อนกลับ</button>
+      <button class="btn btn-next" onclick="nextStep()">ขั้นตอนถัดไป</button>
+    </div>
+  </div>
+
+  <script>
+    const steps = [
+      {
+        number: "ขั้นตอนที่ 1 / 4",
+        title: "1. ล้างมือและสวมถุงมือยางปลอดเชื้อ",
+        desc: "ทำความสะอาดมือด้วยแอลกอฮอล์เจล และสวมถุงมือแบบ สเตอไรด์ เพื่อป้องกันการติดเชื้อเข้าสู่บาดแผล"
+      },
+      {
+        number: "ขั้นตอนที่ 2 / 4",
+        title: "2. ทำความสะอาดแผลด้วย นอร์มอลซาไลน์",
+        desc: "ใช้น้ำเกลือล้างแผล โดยเช็ดจากบริเวณศูนย์กลางของบาดแผลวนออกด้านนอก ห้ามเช็ดย้อนกลับไปมา"
+      },
+      {
+        number: "ขั้นตอนที่ 3 / 4",
+        title: "3. ฆ่าเชื้อรอบบาดแผลด้วย เบตาดีน",
+        desc: "ใช้สำลีชุบน้ำยาฆ่าเชื้อเช็ดเฉพาะ ผิวหนังรอบบาดแผล เพื่อลดจำนวนเชื้อแบคทีเรีย"
+      },
+      {
+        number: "ขั้นตอนที่ 4 / 4",
+        title: "4. ปิดแผลด้วยผ้าก็อซปลอดเชื้อ",
+        desc: "วางผ้าก็อซปิดทับบาดแผล และยึดด้วยพลาสเตอร์ยาหรือแต่งแผลให้เรียบร้อยเพื่อป้องกันฝุ่นละออง"
+      }
+    ];
+
+    let currentStep = 0;
+    let isMuted = false;
+    const synth = window.speechSynthesis;
+
+    function speakCurrentStep() {
+      if (isMuted || !('speechSynthesis' in window)) return;
+
+      // ยกเลิกเสียงเดิมที่กำลังเล่นอยู่
+      synth.cancel();
+
+      const textToSpeak = `${steps[currentStep].title} ${steps[currentStep].desc}`;
+      const utterance = new SpeechSynthesisUtterance(textToSpeak);
+      utterance.lang = 'th-TH';
+      utterance.rate = 0.95; // ปรับความเร็วการพูดให้อ่านฟังง่าย
+      utterance.pitch = 1.0;
+
+      synth.speak(utterance);
+    }
+
+    function toggleAudio() {
+      isMuted = !isMuted;
+      const audioBtn = document.getElementById('toggle-audio-btn');
+      
+      if (isMuted) {
+        audioBtn.innerText = '🔇';
+        synth.cancel();
+      } else {
+        audioBtn.innerText = '🔊';
+        speakCurrentStep();
+      }
+    }
+
+    function updateUI() {
+      document.getElementById('step-number').innerText = steps[currentStep].number;
+      document.getElementById('step-title').innerText = steps[currentStep].title;
+      document.getElementById('step-desc').innerText = steps[currentStep].desc;
+      
+      // อ่านเสียงบรรยายอัตโนมัติ
+      speakCurrentStep();
+    }
+
+    function nextStep() {
+      if (currentStep < steps.length - 1) {
+        currentStep++;
+        updateUI();
+      }
+    }
+
+    function prevStep() {
+      if (currentStep > 0) {
+        currentStep--;
+        updateUI();
+      }
+    }
+
+    // เล่นเสียงขั้นตอนแรกเมื่อผู้เรียนแตะหน้าจอครั้งแรก (ปลดล็อก Audio Autoplay Policy บน iOS/Android)
+    document.body.addEventListener('click', function initAudio() {
+      if (!synth.speaking) {
+        speakCurrentStep();
+      }
+      document.body.removeEventListener('click', initAudio);
+    }, { once: true });
+  </script>
+</body>
+</html>
